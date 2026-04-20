@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Timezone Converter - Test Page</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 40px auto; line-height: 1.8; }
+    h2 { margin-top: 24px; color: #333; }
+    .section { background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <h1>Timezone Converter - Test Page</h1>
+  <p>Load the extension, then open this page to verify conversions.</p>
+
+  <h2>12-hour format</h2>
+  <div class="section">
+    <p>The meeting starts at 4:30pm PT and ends at 5:30pm PT.</p>
+    <p>Our standup is at 9:00am ET every morning.</p>
+    <p>Deployment window: 2:00am UTC to 4:00am UTC.</p>
+    <p>Please join the call at 10:15am CT.</p>
+    <p>The event begins at 7:00pm CET.</p>
+    <p>Office hours are 9:30am IST to 6:30pm IST.</p>
+  </div>
+
+  <h2>24-hour format</h2>
+  <div class="section">
+    <p>Server maintenance at 14:00 UTC.</p>
+    <p>The train departs at 16:45 CET.</p>
+    <p>Release window opens at 23:00 PST.</p>
+  </div>
+
+  <h2>Edge cases</h2>
+  <div class="section">
+    <p>Midnight crossing: 11:30pm PT should show next-day for most timezones east.</p>
+    <p>Noon: 12:00pm ET is tricky for AM/PM handling.</p>
+    <p>Midnight: 12:00am PST edge case.</p>
+    <p>Early morning: 1:00am JST.</p>
+  </div>
+
+  <h2>Should NOT match</h2>
+  <div class="section">
+    <p>The score was 3:45 in the final period.</p>
+    <p>Version 2:30 was released last week.</p>
+    <code>timestamp = "14:00 UTC"</code>
+    <pre>config.time = "9:00am ET"</pre>
+  </div>
+
+  <h2>Mixed content</h2>
+  <div class="section">
+    <p>Join us at 3:00pm PT for the demo, or catch the recording at 8:00am AEST tomorrow.</p>
+    <p>The deadline is 11:59pm ET on Friday. The Tokyo team should note that's 1:59pm JST on Saturday.</p>
+  </div>
+</body>
+</html>

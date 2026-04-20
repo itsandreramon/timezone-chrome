@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Timezone Converter</h1>
+
+    <div class="row">
+      <label for="toggle">Enabled</label>
+      <label class="switch">
+        <input type="checkbox" id="toggle" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="row">
+      <label for="timezone">Your timezone</label>
+      <select id="timezone"></select>
+    </div>
+
+    <p id="status" class="status"></p>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
