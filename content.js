@@ -1,33 +1,6 @@
 (() => {
+  const { TZ_OFFSETS, TIME_RE, convertTime, findMatches } = window.TimezoneConverter;
   const MARKER = 'data-tz-converted';
-
-  const TZ_OFFSETS = {
-    PT: -480, PST: -480, PDT: -420,
-    ET: -300, EST: -300, EDT: -240,
-    CT: -360, CST: -360, CDT: -300,
-    MT: -420, MST: -420, MDT: -360,
-    UTC: 0, GMT: 0,
-    CET: 60, CEST: 120,
-    WET: 0, WEST: 60,
-    EET: 120, EEST: 180,
-    BST: 60,
-    IST: 330,
-    JST: 540,
-    KST: 540,
-    HKT: 480,
-    SGT: 480,
-    AEST: 600, AEDT: 660,
-    NZST: 720, NZDT: 780,
-    AKST: -540, AKDT: -480,
-    HST: -600
-  };
-
-  const TZ_ABBRS = Object.keys(TZ_OFFSETS).sort((a, b) => b.length - a.length).join('|');
-  const TIME_RE = new RegExp(
-    `\\b(\\d{1,2}):(\\d{2})\\s*(am|pm|AM|PM|a\\.m\\.|p\\.m\\.|A\\.M\\.|P\\.M\\.)?\\s*(${TZ_ABBRS})\\b`,
-    'g'
-  );
-
   const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'CODE', 'PRE', 'NOSCRIPT', 'SVG']);
 
   let enabled = true;
@@ -50,70 +23,18 @@
     const now = new Date();
     const utcStr = now.toLocaleString('en-US', { timeZone: 'UTC' });
     const localStr = now.toLocaleString('en-US', { timeZone: userTimezone });
-    const utcDate = new Date(utcStr);
-    const localDate = new Date(localStr);
-    return (localDate - utcDate) / 60000;
-  }
-
-  function convertTime(hours, minutes, ampm, sourceTzAbbr) {
-    if (ampm) {
-      const ap = ampm.replace(/\./g, '').toLowerCase();
-      if (ap === 'pm' && hours !== 12) hours += 12;
-      if (ap === 'am' && hours === 12) hours = 0;
-    } else if (hours <= 23) {
-      // 24h format, keep as-is
-    }
-
-    const sourceOffset = TZ_OFFSETS[sourceTzAbbr];
-    if (sourceOffset === undefined) return null;
-
-    const targetOffset = getUserOffsetMinutes();
-    const totalSourceMinutes = hours * 60 + minutes;
-    const utcMinutes = totalSourceMinutes - sourceOffset;
-    const targetMinutes = utcMinutes + targetOffset;
-
-    let finalMinutes = ((targetMinutes % 1440) + 1440) % 1440;
-    let dayDiff = 0;
-    if (targetMinutes >= 1440) dayDiff = Math.floor(targetMinutes / 1440);
-    else if (targetMinutes < 0) dayDiff = -Math.ceil(-targetMinutes / 1440);
-
-    const h = Math.floor(finalMinutes / 60);
-    const m = finalMinutes % 60;
-
-    let displayH = h % 12 || 12;
-    const displayAmPm = h < 12 ? 'am' : 'pm';
-    const displayM = m.toString().padStart(2, '0');
-
-    let result = `${displayH}:${displayM}${displayAmPm}`;
-
-    if (dayDiff > 0) result += ` +${dayDiff}`;
-    else if (dayDiff < 0) result += ` ${dayDiff}`;
-
-    return result;
+    return (new Date(localStr) - new Date(utcStr)) / 60000;
   }
 
   function processTextNode(node) {
     const text = node.textContent;
     if (!text) return;
 
-    TIME_RE.lastIndex = 0;
-    const matches = [];
-    let match;
-    while ((match = TIME_RE.exec(text)) !== null) {
-      matches.push({
-        index: match.index,
-        length: match[0].length,
-        fullMatch: match[0],
-        hours: parseInt(match[1], 10),
-        minutes: parseInt(match[2], 10),
-        ampm: match[3] || null,
-        tz: match[4]
-      });
-    }
-
+    const matches = findMatches(text);
     if (matches.length === 0) return;
 
     const tzAbbr = getUserTzAbbr();
+    const targetOffset = getUserOffsetMinutes();
     const frag = document.createDocumentFragment();
     let lastIndex = 0;
 
@@ -122,7 +43,7 @@
         frag.appendChild(document.createTextNode(text.slice(lastIndex, m.index)));
       }
 
-      const converted = convertTime(m.hours, m.minutes, m.ampm, m.tz);
+      const converted = convertTime(m.hours, m.minutes, m.ampm, m.tz, targetOffset);
       const span = document.createElement('span');
       span.setAttribute(MARKER, 'true');
 
