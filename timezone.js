@@ -21,15 +21,21 @@ const TZ_OFFSETS = {
 
 const TZ_ABBRS = Object.keys(TZ_OFFSETS).sort((a, b) => b.length - a.length).join('|');
 const TIME_RE = new RegExp(
-  `\\b(\\d{1,2}):(\\d{2})\\s*(am|pm|AM|PM|a\\.m\\.|p\\.m\\.|A\\.M\\.|P\\.M\\.)?\\s*(${TZ_ABBRS})\\b`,
+  `(?<![\\d.])\\b(\\d{1,2}):(\\d{2})[ \\t]*(am|pm|AM|PM|a\\.m\\.|p\\.m\\.|A\\.M\\.|P\\.M\\.)?[ \\t]*(${TZ_ABBRS})\\b`,
   'g'
 );
 
 function convertTime(hours, minutes, ampm, sourceTzAbbr, targetOffsetMinutes) {
+  if (typeof targetOffsetMinutes !== 'number' || isNaN(targetOffsetMinutes)) return null;
+  if (minutes > 59) return null;
+
   if (ampm) {
+    if (hours < 1 || hours > 12) return null;
     const ap = ampm.replace(/\./g, '').toLowerCase();
     if (ap === 'pm' && hours !== 12) hours += 12;
     if (ap === 'am' && hours === 12) hours = 0;
+  } else {
+    if (hours > 23) return null;
   }
 
   const sourceOffset = TZ_OFFSETS[sourceTzAbbr];

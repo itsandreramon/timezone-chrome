@@ -1,5 +1,5 @@
 (() => {
-  const { TZ_OFFSETS, TIME_RE, convertTime, findMatches } = window.TimezoneConverter;
+  const { TIME_RE, convertTime, findMatches } = window.TimezoneConverter;
   const MARKER = 'data-tz-converted';
   const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'CODE', 'PRE', 'NOSCRIPT', 'SVG']);
 
@@ -20,13 +20,18 @@
   }
 
   function getUserOffsetMinutes() {
-    const now = new Date();
-    const utcStr = now.toLocaleString('en-US', { timeZone: 'UTC' });
-    const localStr = now.toLocaleString('en-US', { timeZone: userTimezone });
-    return (new Date(localStr) - new Date(utcStr)) / 60000;
+    try {
+      const now = new Date();
+      const utcStr = now.toLocaleString('en-US', { timeZone: 'UTC' });
+      const localStr = now.toLocaleString('en-US', { timeZone: userTimezone });
+      return (new Date(localStr) - new Date(utcStr)) / 60000;
+    } catch {
+      return null;
+    }
   }
 
   function processTextNode(node) {
+    if (!node.isConnected) return;
     const text = node.textContent;
     if (!text) return;
 
@@ -35,6 +40,8 @@
 
     const tzAbbr = getUserTzAbbr();
     const targetOffset = getUserOffsetMinutes();
+    if (targetOffset === null) return;
+
     const frag = document.createDocumentFragment();
     let lastIndex = 0;
 
@@ -95,7 +102,7 @@
   function removeConversions() {
     document.querySelectorAll(`[${MARKER}]`).forEach(span => {
       const text = span.textContent;
-      const cleaned = text.replace(/\s*\(.*?\)$/, '');
+      const cleaned = text.replace(/\s+\([^)]+\)$/, '');
       span.replaceWith(document.createTextNode(cleaned));
     });
   }

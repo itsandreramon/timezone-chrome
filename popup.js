@@ -56,10 +56,24 @@ TIMEZONES.forEach(({ group, zones }) => {
 
 const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+function ensureTzInList(tz) {
+  if (!tz) return;
+  for (const opt of select.options) {
+    if (opt.value === tz) return;
+  }
+  const opt = document.createElement('option');
+  opt.value = tz;
+  opt.textContent = formatTzLabel(tz);
+  select.prepend(opt);
+}
+
+ensureTzInList(browserTz);
+
 chrome.storage.local.get(['enabled', 'timezone'], result => {
   toggle.checked = result.enabled !== false;
-  select.value = result.timezone || browserTz;
-  if (!select.value) select.value = browserTz;
+  const tz = result.timezone || browserTz;
+  ensureTzInList(tz);
+  select.value = tz;
   updateStatus();
 });
 

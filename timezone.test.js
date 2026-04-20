@@ -4,61 +4,34 @@ const { convertTime, findMatches, TZ_OFFSETS, TIME_RE } = require('./timezone.js
 
 describe('convertTime', () => {
   it('converts 4:30pm PST to CET (UTC+1)', () => {
-    // PST = -480, CET = +60 → target offset = 60
-    // 4:30pm = 16:30 → 16*60+30 = 990
-    // utc = 990 - (-480) = 1470 → target = 1470 + 60 = 1530
-    // 1530 % 1440 = 90 → 1:30am, dayDiff = 1
     assert.equal(convertTime(4, 30, 'pm', 'PST', 60), '1:30am +1');
   });
 
   it('converts 9:00am UTC to JST (UTC+9)', () => {
-    // UTC = 0, JST = +540
-    // 9:00am = 9*60 = 540
-    // utc = 540 - 0 = 540 → target = 540 + 540 = 1080
-    // 1080 / 60 = 18:00 → 6:00pm
     assert.equal(convertTime(9, 0, 'am', 'UTC', 540), '6:00pm');
   });
 
   it('converts 14:00 UTC to JST (24h format, no ampm)', () => {
-    // 14*60 = 840 → utc = 840 → target = 840 + 540 = 1380
-    // 1380 / 60 = 23:00 → 11:00pm
     assert.equal(convertTime(14, 0, null, 'UTC', 540), '11:00pm');
   });
 
   it('handles midnight crossing forward (+1 day)', () => {
-    // 11:30pm PST → CET (+60)
-    // 23:30 = 1410 → utc = 1410 + 480 = 1890 → target = 1890 + 60 = 1950
-    // 1950 % 1440 = 510 → 8:30am, dayDiff = 1
     assert.equal(convertTime(11, 30, 'pm', 'PST', 60), '8:30am +1');
   });
 
   it('handles midnight crossing backward (-1 day)', () => {
-    // 1:00am CET → HST (-600)
-    // 1:00 = 60 → utc = 60 - 60 = 0 → target = 0 + (-600) = -600
-    // ((-600 % 1440) + 1440) % 1440 = 840 → 2:00pm, dayDiff = -1
     assert.equal(convertTime(1, 0, 'am', 'CET', -600), '2:00pm -1');
   });
 
   it('handles 12:00pm (noon) correctly', () => {
-    // 12pm ET → UTC (0)
-    // ET = -300, 12pm = 12:00 = 720
-    // utc = 720 - (-300) = 1020 → target = 1020 + 0 = 1020
-    // 1020 / 60 = 17:00 → 5:00pm
     assert.equal(convertTime(12, 0, 'pm', 'ET', 0), '5:00pm');
   });
 
   it('handles 12:00am (midnight) correctly', () => {
-    // 12am PST → UTC (0)
-    // 12am = 0:00 = 0
-    // utc = 0 - (-480) = 480 → target = 480 + 0 = 480
-    // 480 / 60 = 8:00 → 8:00am
     assert.equal(convertTime(12, 0, 'am', 'PST', 0), '8:00am');
   });
 
   it('handles half-hour offset timezone (IST UTC+5:30)', () => {
-    // 12:00pm UTC → IST (+330)
-    // 12*60 = 720 → utc = 720 → target = 720 + 330 = 1050
-    // 1050 / 60 = 17.5 → 17:30 → 5:30pm
     assert.equal(convertTime(12, 0, 'pm', 'UTC', 330), '5:30pm');
   });
 
@@ -77,15 +50,46 @@ describe('convertTime', () => {
   });
 
   it('same timezone conversion returns same time', () => {
-    // 3:00pm PST → PST (-480)
     assert.equal(convertTime(3, 0, 'pm', 'PST', -480), '3:00pm');
   });
 
   it('converts PDT to EDT', () => {
-    // PDT = -420, EDT = -240
-    // 2:00pm PDT → 14*60 = 840 → utc = 840 + 420 = 1260 → target = 1260 - 240 = 1020
-    // 1020 / 60 = 17:00 → 5:00pm
     assert.equal(convertTime(2, 0, 'pm', 'PDT', -240), '5:00pm');
+  });
+
+  it('returns null for invalid minutes (> 59)', () => {
+    assert.equal(convertTime(9, 99, 'am', 'UTC', 0), null);
+    assert.equal(convertTime(9, 60, 'am', 'UTC', 0), null);
+  });
+
+  it('returns null for hours > 23 in 24h format', () => {
+    assert.equal(convertTime(24, 0, null, 'UTC', 0), null);
+    assert.equal(convertTime(25, 30, null, 'UTC', 0), null);
+  });
+
+  it('returns null for hours > 12 with am/pm', () => {
+    assert.equal(convertTime(13, 0, 'am', 'UTC', 0), null);
+    assert.equal(convertTime(14, 0, 'pm', 'UTC', 0), null);
+  });
+
+  it('returns null for hour 0 with am/pm', () => {
+    assert.equal(convertTime(0, 0, 'am', 'UTC', 0), null);
+  });
+
+  it('returns null for NaN target offset', () => {
+    assert.equal(convertTime(9, 0, 'am', 'UTC', NaN), null);
+  });
+
+  it('returns null for undefined target offset', () => {
+    assert.equal(convertTime(9, 0, 'am', 'UTC', undefined), null);
+  });
+
+  it('handles 23:59 in 24h format', () => {
+    assert.equal(convertTime(23, 59, null, 'UTC', 60), '12:59am +1');
+  });
+
+  it('handles 0:00 in 24h format', () => {
+    assert.equal(convertTime(0, 0, null, 'UTC', 0), '12:00am');
   });
 });
 
@@ -141,6 +145,24 @@ describe('findMatches', () => {
     assert.equal(findMatches('version2:30pm PST').length, 0);
   });
 
+  it('does not match after decimal points', () => {
+    assert.equal(findMatches('3.14:15 JST').length, 0);
+  });
+
+  it('does not match IP-like patterns', () => {
+    assert.equal(findMatches('192.168.1.0:30pm PST').length, 0);
+  });
+
+  it('does not match across newlines', () => {
+    assert.equal(findMatches('9:00am\nPST').length, 0);
+    assert.equal(findMatches('9:00am\n\nPST').length, 0);
+  });
+
+  it('matches with tab separator', () => {
+    const matches = findMatches('9:00am\tPST');
+    assert.equal(matches.length, 1);
+  });
+
   it('matches all supported timezone abbreviations', () => {
     const abbrs = Object.keys(TZ_OFFSETS);
     for (const tz of abbrs) {
@@ -148,6 +170,11 @@ describe('findMatches', () => {
       assert.equal(matches.length, 1, `should match timezone ${tz}`);
       assert.equal(matches[0].tz, tz);
     }
+  });
+
+  it('match length equals fullMatch length', () => {
+    const matches = findMatches('at 4:30pm PT ok');
+    assert.equal(matches[0].length, matches[0].fullMatch.length);
   });
 });
 
